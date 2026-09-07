@@ -1,0 +1,33 @@
+name: Threads Scheduler (ticker)
+# 20分おきに起こされ、投稿時刻(JST 08:15 / 22:00)が近ければその時刻まで待って
+# iconnect-threads の投稿ワークフローを workflow_dispatch で叩く。
+# 公開リポジトリのActions実行は無料なので、待ち時間が発生しても課金されない。
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '叩かずに判定結果だけ見る'
+        type: boolean
+        default: false
+permissions: {}
+concurrency:
+  # 遅れて溜まったtickerが同時に走って二重で叩かないように直列化する
+  group: threads-scheduler
+  cancel-in-progress: false
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      TZ: Asia/Tokyo
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Dispatch when it is time
+        env:
+          DISPATCH_TOKEN: ${{ secrets.THREADS_DISPATCH_TOKEN }}
+          TARGET_REPO: dai916/iconnect-threads
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: python3 scripts/dispatch_threads.py
