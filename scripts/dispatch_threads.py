@@ -39,6 +39,8 @@ CATCHUP_MIN = 240    # 投稿時刻を過ぎていてもこの範囲なら取り
 DRY_RUN = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes")
 # PATの設定確認だけをする自己診断モード(投稿時刻と関係なく実行できる)
 CHECK_ONLY = os.getenv("CHECK_ONLY", "").lower() in ("1", "true", "yes")
+# 確認モードで叩く、何も投稿しないワークフロー
+SELFTEST_WORKFLOW = "dispatch-selftest.yml"
 
 
 def api(path: str, method: str = "GET", body: dict | None = None) -> dict:
@@ -118,6 +120,15 @@ def main() -> None:
         ]
         print("今日の枠に対応するワークフロー: "
               + ("すべて存在します" if not missing else f"見つかりません → {missing}"))
+
+        # 起動する権限(Actions: write)があるかを、投稿しないワークフローで確かめる
+        if SELFTEST_WORKFLOW in names:
+            api(f"/repos/{TARGET_REPO}/actions/workflows/{SELFTEST_WORKFLOW}/dispatches",
+                method="POST", body={"ref": "main"})
+            print(f"{SELFTEST_WORKFLOW} を起動できました(＝PATに起動権限あり)。"
+                  "このワークフローは何も投稿しません。")
+        else:
+            print(f"[警告] {SELFTEST_WORKFLOW} が無いため起動権限の確認はできません。")
         return
 
     for slot, at in sorted(SLOTS.items(), key=lambda kv: kv[1]):
