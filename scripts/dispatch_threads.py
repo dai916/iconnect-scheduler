@@ -37,6 +37,8 @@ SLOTS = {
 MAX_SLEEP_MIN = 45   # これ以内に投稿時刻が来るなら待って定刻に叩く
 CATCHUP_MIN = 240    # 投稿時刻を過ぎていてもこの範囲なら取り返して叩く
 DRY_RUN = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes")
+# PATの設定確認だけをする自己診断モード(投稿時刻と関係なく実行できる)
+CHECK_ONLY = os.getenv("CHECK_ONLY", "").lower() in ("1", "true", "yes")
 
 
 def api(path: str, method: str = "GET", body: dict | None = None) -> dict:
@@ -100,6 +102,23 @@ def main() -> None:
 
     now = datetime.now(JST)
     print(f"現在 {now:%Y-%m-%d %H:%M:%S} JST / 対象 {TARGET_REPO}")
+
+    if CHECK_ONLY:
+        # PATが対象リポジトリのActionsを読めるか(=叩けるか)だけを確認する。
+        # 投稿時刻から遠い時間帯でも設定ミスに気づけるようにするための自己診断。
+        data = api(f"/repos/{TARGET_REPO}/actions/workflows?per_page=100")
+        names = [w["path"].split("/")[-1] for w in data.get("workflows", [])]
+        posts = sorted(n for n in names if n.startswith("post-"))
+        print(f"PATで {TARGET_REPO} のワークフロー {len(names)}件を取得できました。")
+        print(f"投稿ワークフロー {len(posts)}件: {', '.join(posts)}")
+        missing = [
+            workflow_file(now.replace(hour=0), slot)
+            for slot in SLOTS
+            if workflow_file(now.replace(hour=0), slot) not in names
+        ]
+        print("今日の枠に対応するワークフロー: "
+              + ("すべて存在します" if not missing else f"見つかりません → {missing}"))
+        return
 
     for slot, at in sorted(SLOTS.items(), key=lambda kv: kv[1]):
         target = now.replace(hour=at.hour, minute=at.minute, second=0, microsecond=0)

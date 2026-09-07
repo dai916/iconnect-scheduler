@@ -11,6 +11,10 @@ on:
         description: '叩かずに判定結果だけ見る'
         type: boolean
         default: false
+      check_only:
+        description: 'PATの設定確認だけする(投稿時刻と無関係に実行可)'
+        type: boolean
+        default: false
 permissions: {}
 concurrency:
   # 遅れて溜まったtickerが同時に走って二重で叩かないように直列化する
@@ -30,4 +34,5 @@ jobs:
           DISPATCH_TOKEN: ${{ secrets.THREADS_DISPATCH_TOKEN }}
           TARGET_REPO: dai916/iconnect-threads
           DRY_RUN: ${{ inputs.dry_run }}
+          CHECK_ONLY: ${{ inputs.check_only }}
         run: python3 scripts/dispatch_threads.py
