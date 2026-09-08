@@ -1,5 +1,5 @@
 name: Threads Scheduler (ticker)
-# 20分おきに起こされ、投稿時刻(JST 08:15 / 22:00)が近ければその時刻まで待って
+# 20分おきに起こされ、投稿時刻(JST 08:15 / 22:00)が5.5時間以内なら その時刻まで待って
 # iconnect-threads の投稿ワークフローを workflow_dispatch で叩く。
 # 公開リポジトリのActions実行は無料なので、待ち時間が発生しても課金されない。
 on:
@@ -23,7 +23,7 @@ concurrency:
 jobs:
   tick:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 355  # MAX_SLEEP_MIN(330分)の待機を許容する
     env:
       TZ: Asia/Tokyo
     steps:
