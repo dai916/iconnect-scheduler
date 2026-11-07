@@ -1,0 +1,41 @@
+name: Keepalive
+# GitHubは「60日間リポジトリに動きがない」とスケジュール実行を自動で無効化する。
+# このリポジトリは作成(2026-09-08)以降コミットが無かったため、ちょうど60日後の
+# 2026-11-07に ticker が disabled_inactivity で止められた。
+# 週1でハートビートをコミットして、その60日タイマーをリセットする。
+# あわせて ticker が無効化されていれば有効に戻す。
+on:
+  schedule:
+    - cron: '37 3 * * 1'  # JST 月曜12:37ごろ(遅延込み。頻度は週1で十分)
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Asia/Tokyo
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update heartbeat
+        run: |
+          mkdir -p data
+          date '+%Y-%m-%d %H:%M:%S %Z' > data/heartbeat.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/heartbeat.txt
+          git diff --staged --quiet || git commit -m "Keepalive $(date '+%Y-%m-%d')"
+          git pull --rebase origin main
+          git push
+      - name: Re-enable ticker if it was disabled
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          state=$(gh api repos/${{ github.repository }}/actions/workflows/threads-scheduler.yml --jq .state)
+          echo "ticker state: $state"
+          if [ "$state" != "active" ]; then
+            gh workflow enable threads-scheduler.yml
+            echo "ticker を有効に戻しました"
+          fi

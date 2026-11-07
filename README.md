@@ -45,6 +45,17 @@ GitHubのスケジュール実行(cron)は発火自体が遅れる。`dai916/ico
 PAT未設定のあいだ ticker は何もせず正常終了する。投稿は iconnect-threads 側の
 定時cron(遅延あり)が担保する。
 
+## 60日で勝手に止まる問題
+
+GitHubは「60日間リポジトリに動きがない」とスケジュール実行を自動で無効化する。
+このリポジトリは作成以降コミットが無かったため、ちょうど60日後の2026-11-07に
+ticker が `disabled_inactivity` になった(投稿は iconnect-threads 側の
+フォールバックcronに引き継がれたので止まってはいない)。
+
+対策として `keepalive.yml` が週1でハートビートをコミットし、タイマーを
+リセットする。あわせて ticker が無効化されていれば有効に戻す。
+手動で戻すときは `gh workflow enable threads-scheduler.yml`。
+
 ## 運用メモ
 
 - 投稿時刻を変えるときは `scripts/dispatch_threads.py` の `SLOTS` と、
